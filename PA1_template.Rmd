@@ -7,11 +7,19 @@ This document describes the proedure to accomplish the above mentioned assignmen
 
 ## Data Description
 
-Describe the data set here.  
+The dataset consists of number of steps measured during a 5-minute interval for the period of Oct-Nov 2012. Missing values are coded as **NA**. The dataset is a csv file with 17,568 observations.  
+
+
+Following variables are included in the dataset:  
+
+* **steps:** Number of steps in a 5-minute period.
+* **date:** Measurement date in YYYY-MM-DD format.  
+* **interval:** Identifying 5-minute interval for the measurement
 
 ## Assignment
 
-Some description of the assignment
+This assignment is to use R markdown language using knitr package.  
+
 
 ## Loading various packages
 
@@ -32,7 +40,7 @@ str(df)
 
 The *date* field is converted to date datatype.  
 
-A new filed **period** is added with a format of **HHMM** using *interval* field.  
+A new field  **period** is added with a format of **HHMM** using *interval* field.  
 
 ```{r}
 df$date = as.Date(df$date, "%Y-%m-%d")
@@ -43,7 +51,7 @@ df$period = sprintf("%04d", df$interval)
 
 To achieve the above measure, we first summarize the steps taken per day. Using this computed variable  histogram is plotted, mean and median steps per day are computed:  
 
-### Plotting Histogram of average daily steps
+### Histogram of average daily steps
 
 ```{r fig.width=7, fig.height=6}
 dfDaily = ddply(df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
@@ -51,7 +59,7 @@ hist(dfDaily$dailySteps, breaks=25, main='Histogram of Daily Steps Taken',
      xlab='Number of steps', ylab='Freguency')
 ```
 
-### Determination of mean and median of daily steps
+### Mean and Median of daily steps
 
 ```{r}
 avgStepsPerDay = round(mean(dfDaily$dailySteps))
@@ -77,7 +85,7 @@ with(dfPeriod, {plot(period, periodSteps, type='l',
      )
 ```
 
-### Interval with maximum steps
+### Interval having maximum steps
 
 The following code determines in which period contains maximum steps averaged across all the days of the study period.  
 
@@ -125,14 +133,14 @@ t_na = t_na[t_period, ':='(steps = i.periodSteps), nomatch=0]
 ## combine the subsets to form a new dataset
 new_df = data.frame(rbind(t_not_na, t_na))
 ```
-### Making Histogram of total steps
+### Histogram of total steps after imputation
 
 ```{r fig.width=7, fig.height=6}
 new_dfDaily = ddply(new_df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
 hist(new_dfDaily$dailySteps, breaks=25, main='Histogram of Daily Steps taken after imputing',
      xlab='Number of steps', ylab='Freguency')
 ```
-### Computing new mean, median & determination of impact
+### Mean, Median & determination of impact after imputation
 
 ```{r}
 new_avgStepsPerDay = round(mean(new_dfDaily$dailySteps))
@@ -146,4 +154,25 @@ These values are different than the original values. The difference is because f
 
 ## Are there differences in activity patterns between weekdays and week
 
+To identify the difference in activity pattern, we first classify the activity date as weekday or weekend. Once done, aggregation over the interval is done taking the day type in consideration.
+
+### Weekend vs. Weekday classification
+
+```{r}
+new_df$dayType="weekday"
+new_df$dayType[weekdays(new_df$date, abbreviate=T) %in% c("Sat", "Sun")] = "weekend"
+new_df$dayType=factor(new_df$dayType)
+## doing the aggregation based on day type and interval
+new_dfPeriod = ddply(new_df, .(dayType, interval), summarise, periodSteps=round(mean(steps, na.rm=T)))
+```
+
+### Time series plot based on day type
+
+```{r fig.width=7, fig.height=6}
+xyplot(periodSteps ~ interval | dayType, data=new_dfPeriod, 
+       type="l", layout=c(1,2),
+       xlab="Interval", ylab="Number of steps")
+```
+
+As we can see from the chart, weekday steps are higher during the morning hours, possibly due to work out or running, where as daytime steps are more than that of weekday. This may be due to doing weekend chores while working during the weekday.  
 
