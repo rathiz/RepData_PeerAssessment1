@@ -1,0 +1,63 @@
+# Reproducible Research: Peer Assessment 1
+==========================================
+
+## Introduction
+
+This document describes the proedure to accomplish the above mentioned assignment. It assumes that **Activity Monitoring Dataset** file *activity.csv* is in the same folder as this document.  
+
+## Data Description
+
+Describe the data set here.  
+
+## Assignment
+
+Some description of the assignment
+
+## Loading various packages
+
+```{r}
+library(plyr)
+library(lattice)
+```
+
+
+## Loading and preprocessing the data
+
+
+```{r}
+df = read.csv("activity.csv", stringsAsFactor=F)
+str(df)
+```
+
+The *date* field is converted to date datatype.  
+
+A new filed **period** is added with a format of **HHMM** using *interval* field.  
+
+```{r}
+df$date = as.Date(df$date, "%Y-%m-%d")
+df$period = sprintf("%04d", df$interval)
+str(df)
+```
+
+## What is mean total number of steps taken per day?
+```{r}
+dfDaily = ddply(df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
+```
+
+```{r fig.width=7, fig.height=6}
+hist(dfDaily$dailySteps, breaks=25)
+```
+
+```{r}
+# histogram(dfDaily$dailySteps, breaks=25, main="Histogram of Daily Steps Taken", xlab="Daily Total Steps", ylab="Frequency")
+```
+
+## What is the average daily activity pattern?
+
+
+## Imputing missing values
+
+
+## Are there differences in activity patterns between weekdays and week
+
+
