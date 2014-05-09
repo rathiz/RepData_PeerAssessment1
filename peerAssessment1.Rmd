@@ -18,6 +18,7 @@ Some description of the assignment
 ```{r}
 library(plyr)
 library(lattice)
+library(data.table)
 ```
 
 
@@ -36,26 +37,111 @@ A new filed **period** is added with a format of **HHMM** using *interval* field
 ```{r}
 df$date = as.Date(df$date, "%Y-%m-%d")
 df$period = sprintf("%04d", df$interval)
-str(df)
 ```
 
 ## What is mean total number of steps taken per day?
-```{r}
-dfDaily = ddply(df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
-```
+
+To achieve the above measure, we first summarize the steps taken per day. Using this computed variable  histogram is plotted, mean and median steps per day are computed:  
+
+### Plotting Histogram of average daily steps
 
 ```{r fig.width=7, fig.height=6}
-hist(dfDaily$dailySteps, breaks=25)
+dfDaily = ddply(df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
+hist(dfDaily$dailySteps, breaks=25, main='Histogram of Daily Steps Taken',
+     xlab='Number of steps', ylab='Freguency')
 ```
 
+### Determination of mean and median of daily steps
+
 ```{r}
-# histogram(dfDaily$dailySteps, breaks=25, main="Histogram of Daily Steps Taken", xlab="Daily Total Steps", ylab="Frequency")
+avgStepsPerDay = round(mean(dfDaily$dailySteps))
+medStepsPerDay = median(dfDaily$dailySteps)
 ```
+
+
+The mean number of steps taken per day is **`r avgStepsPerDay`** and median number of steps taken each day is **`r medStepsPerDay`**.  Since median value is more than the mean value, distribution of steps taken per day is positively skewed.
+
 
 ## What is the average daily activity pattern?
 
+To compute average daily activity pattern, the data is summarized over *period* field. Average steps taken per period is calculated as summary.  
+
+### Time series line plot of average daily activity pattern
+
+```{r fig.width=7, fig.height=6}
+dfPeriod = ddply(df, .(period), summarise, periodSteps=round(mean(steps, na.rm=T)))
+with(dfPeriod, {plot(period, periodSteps, type='l',
+                    main='Average steps taken during 5 minute periods of a day',
+                    xlab='5 minute period', ylab='Number of steps')
+                }
+     )
+```
+
+### Interval with maximum steps
+
+The following code determines in which period contains maximum steps averaged across all the days of the study period.  
+
+
+```{r maxSteps}
+maxSteps = max(dfPeriod$periodSteps)
+periodMaxSteps = with(dfPeriod, period[which(periodSteps == maxSteps)])
+```
+
+Period **`r periodMaxSteps`** has the maximum number of **`r maxSteps`** steps.  
+
 
 ## Imputing missing values
+
+The input data set has a number of intervals with missing steps indicated by **NA**. We will impute these values with the average steps of the corresponding period, as calculated in Daily average activity pattern. This will be done using powerful intrinsics provided by data.table package.  
+
+### Total number of rows with missing values
+
+```{r}
+nRowsWithNA = length(which(rowSums(is.na(df)) > 0))
+```
+
+
+There are **`r nRowsWithNA`** rows in the dataset where **steps** field  has **NA** value. Please note that, this is not the number of days with miising values but number of intrevals with missing values.
+
+
+### Imputing Missing Values Strategies & creating new dataset
+
+We split the input data set into NOT NA and NA dataset. NA dataset is populated with the average steps of the corresponding interval. Finally both the data subsets are combined to get the imputed dataset.  
+
+```{r}
+dfPeriod$periodSteps = as.integer(dfPeriod$periodSteps)
+
+## convert the datasets into data tables
+t_df = data.table(df, key="period")
+t_period = data.table(dfPeriod, key="period")
+
+## split the input dataset into NA & non-NA subsets
+t_not_na = t_df[which(rowSums(is.na(t_df)) == 0),]
+t_na = t_df[which(rowSums(is.na(t_df)) > 0),]
+
+## replace the NA values with average for the corresponding interval
+t_na = t_na[t_period, ':='(steps = i.periodSteps), nomatch=0]
+
+## combine the subsets to form a new dataset
+new_df = data.frame(rbind(t_not_na, t_na))
+```
+### Making Histogram of total steps
+
+```{r fig.width=7, fig.height=6}
+new_dfDaily = ddply(new_df, .(date), summarise, dailySteps=sum(steps, na.rm=T))
+hist(new_dfDaily$dailySteps, breaks=25, main='Histogram of Daily Steps taken after imputing',
+     xlab='Number of steps', ylab='Freguency')
+```
+### Computing new mean, median & determination of impact
+
+```{r}
+new_avgStepsPerDay = round(mean(new_dfDaily$dailySteps))
+new_medStepsPerDay = median(new_dfDaily$dailySteps)
+```
+
+The mean number of steps is **`r new_avgStepsPerDay`** and new median value is **`r new_medStepsPerDay`**. 
+
+These values are different than the original values. The difference is because for the original dataset, we ignored the intervals with NA values, but in the new dataset we replaced these values with mean. This will make the total number of steps bigger than the original mean and median.
 
 
 ## Are there differences in activity patterns between weekdays and week
